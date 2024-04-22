@@ -16,10 +16,19 @@ let successHeaders = "";
 let successReqParams = "";
 let lastSuccessBody = "{'id': 0, 'message': 'failed'}";
 
-var logFile = 'request_logs.json'
+const logFile = 'request_logs.json';
+let logDataArray = []; // Array to store log data objects
 
 // Middleware to log requests to a JSON file
 const logToFile = (req, res, next) => {
+  const excludedUrls = ['/entries', '/clear-entries']; // Add more URLs as needed
+
+  if (excludedUrls.includes(req.originalUrl)) {
+    // Skip logging and move to the next middleware/route handler
+    next();
+    return;
+  }
+
   const logData = {
     timestamp: new Date().toISOString(),
     method: req.method,
@@ -29,8 +38,7 @@ const logToFile = (req, res, next) => {
     body: req.body
   };
 
-  const formattedLogData = JSON.stringify(logData, null, 2);
-  fs.appendFileSync(logFile, formattedLogData + '\n\n');
+  logDataArray.push(logData); // Push log data object into array
   next();
 };
 
@@ -68,38 +76,24 @@ app.get('/last-success-header-body-params', (req, res) => {
   res.json({ counter, successHeaders, successReqParams, lastSuccessBody,});
 });
 
-// API endpoint to get all entries from the JSON file
+// Endpoint to get all entries from the JSON file
 app.get('/entries', (req, res) => {
-  fs.readFile(logFile, 'utf8', (err, data) => {
-    if (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
-    }
-
-    try {
-      const entries = JSON.parse(data);
-      res.json({ entries });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Error parsing JSON file' });
-    }
-  });
+  res.json({ entries: logDataArray });
 });
 
-// API endpoint to clear the content of the JSON file
+// Endpoint to clear the content of the JSON file
 app.delete('/clear-entries', (req, res) => {
-  fs.truncate(logFile, 0, (err) => {
-    if (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Internal Server Error' });
-      return;
-    }
-    res.json({ message: 'File content cleared successfully' });
-  });
+  logDataArray = []; // Clear the log data array
+  res.json({ message: 'File content cleared successfully' });
 });
 
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+
+// Gracefully handle process termination by writing remaining log data to the file
+process.on('SIGINT', () => {
+  fs.writeFileSync(logFile, JSON.stringify(logDataArray, null, 2));
+  process.exit();
 });
