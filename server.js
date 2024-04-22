@@ -16,6 +16,8 @@ let successHeaders = "";
 let successReqParams = "";
 let lastSuccessBody = "{'id': 0, 'message': 'failed'}";
 
+var logFile = 'request_logs.json'
+
 // Middleware to log requests to a JSON file
 const logToFile = (req, res, next) => {
   const logData = {
@@ -28,7 +30,7 @@ const logToFile = (req, res, next) => {
   };
 
   const formattedLogData = JSON.stringify(logData, null, 2);
-  fs.appendFileSync('request_logs.json', formattedLogData + '\n\n');
+  fs.appendFileSync(logFile, formattedLogData + '\n\n');
   next();
 };
 
@@ -66,20 +68,37 @@ app.get('/last-success-header-body-params', (req, res) => {
   res.json({ counter, successHeaders, successReqParams, lastSuccessBody,});
 });
 
-app.get('/status', (req, res) => {
-  console.log(lastRequestBody);
-  res.json({ counter, lastRequestBody});
+// API endpoint to get all entries from the JSON file
+app.get('/entries', (req, res) => {
+  fs.readFile(logFile, 'utf8', (err, data) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+
+    try {
+      const entries = JSON.parse(data);
+      res.json({ entries });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error parsing JSON file' });
+    }
+  });
 });
 
-app.post('/increment', (req, res) => {
-  counter++;
-  res.json({ counter });
+// API endpoint to clear the content of the JSON file
+app.delete('/clear-entries', (req, res) => {
+  fs.truncate(logFile, 0, (err) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+    res.json({ message: 'File content cleared successfully' });
+  });
 });
 
-app.post('/decrement', (req, res) => {
-  counter--;
-  res.json({ counter });
-});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
