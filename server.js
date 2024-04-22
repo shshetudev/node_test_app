@@ -1,6 +1,7 @@
 // server.js
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -14,6 +15,24 @@ let lastRequest;
 let successHeaders = "";
 let successReqParams = "";
 let lastSuccessBody = "{'id': 0, 'message': 'failed'}";
+
+// Middleware to log requests to a JSON file
+const logToFile = (req, res, next) => {
+  const logData = {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.originalUrl,
+    headers: req.headers,
+    params: req.params,
+    body: req.body
+  };
+
+  const formattedLogData = JSON.stringify(logData, null, 2);
+  fs.appendFileSync('request_logs.json', formattedLogData + '\n\n');
+  next();
+};
+
+app.use(logToFile);
 
 app.post('/', (req, res) => {
   counter++;
@@ -32,35 +51,6 @@ app.post('/', (req, res) => {
   console.log(lastSuccessBody);
 
   res.json({ counter, successHeaders, successReqParams, lastSuccessBody,});
-});
-
-app.get('/success', (req, res) => {
-  counter++;
-  successHeaders = req.headers;
-  successReqParams = req.params;
-  lastSuccessBody = req.body;
-  lastRequest = req;
-  
-  console.log(`Request Headers:`);
-  console.log(successHeaders);
-
-  console.log(`Request Params:`);
-  console.log(successReqParams);
-
-  console.log(`Request Body:`);
-  console.log(lastSuccessBody);
-
-  res.json({ counter, successHeaders, successReqParams, lastSuccessBody,});
-});
-
-app.get('/last-success-body', (req, res) => {
-  console.log(lastSuccessBody);
-  res.json({ counter, lastSuccessBody});
-});
-
-app.get('/last-req', (req, res) => {
-  console.log(lastRequest);
-  res.json({ "request": "printed"});
 });
 
 app.get('/last-success-header-body-params', (req, res) => {
