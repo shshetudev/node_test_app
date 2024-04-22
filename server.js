@@ -21,7 +21,7 @@ let logDataArray = []; // Array to store log data objects
 
 // Middleware to log requests to a JSON file
 const logToFile = (req, res, next) => {
-  const excludedUrls = ['/entries', '/clear-entries']; // Add more URLs as needed
+  const excludedUrls = ['/entries', '/clear-entries', '/last-success-header-body-params']; // Add more URLs as needed
 
   if (excludedUrls.includes(req.originalUrl)) {
     // Skip logging and move to the next middleware/route handler
